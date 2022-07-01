@@ -1,0 +1,51 @@
+body {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 350px;
+  background-color: var(--color-background);
+  padding: 2rem;
+  overflow-y: scroll;
+  box-sizing: border-box;
+  border-radius: 2rem;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1rem;
+  margin-top: 1rem;
+  width: 100%;
+}
+
+.input-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.input-field > label {
+  font-size: smaller;
+}
+
+.input-field > input {
+  margin-top: 0;
+}
+
+button[type="submit"] {
+  padding: 0.5rem 2rem;
+}
+
+.form-validation-error {
+  margin: 0;
+  margin-top: 0.25em;
+  color: var(--color-danger);
+  font-size: 0.8rem;
+}

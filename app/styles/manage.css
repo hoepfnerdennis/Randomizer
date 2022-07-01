@@ -1,0 +1,34 @@
+.user-update-form {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  margin-top: 1rem;
+}
+
+.input-field {
+  display: flex;
+  flex-direction: row;
+}
+
+.input-field > select,
+.input-field > input {
+  margin-top: 0;
+}
+
+button[type="submit"] {
+  padding: 0.5rem 2rem;
+}
+
+.form-error {
+  margin: 0;
+  margin-top: 0.25em;
+  color: var(--color-danger);
+  font-size: 0.8rem;
+}
+
+.form-success {
+  margin: 0;
+  margin-top: 0.25em;
+  color: var(--color-success);
+  font-size: 0.8rem;
+}

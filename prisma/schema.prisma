@@ -1,0 +1,36 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Randomizer {
+  id     String  @id @default(uuid())
+  name   String
+  values Value[]
+}
+
+model Value {
+  id           String      @id @default(uuid())
+  name         String
+  Randomizer   Randomizer? @relation(fields: [randomizerId], references: [id])
+  randomizerId String?
+}
+
+model User {
+  id           String @id @default(uuid())
+  username     String @unique
+  passwordHash String
+  role         Role
+}
+
+enum Role {
+  USER
+  ADMIN
+}
