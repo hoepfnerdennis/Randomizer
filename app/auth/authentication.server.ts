@@ -1,7 +1,7 @@
 import { User } from "@prisma/client";
 import { json } from "@remix-run/node";
 import bcrypt from "bcryptjs";
-import { getUserByUsername, updateUserById } from "~/database/queries.server";
+// import { getUserByUsername } from "~/database/queries.server";
 import { isString } from "~/utils/guards";
 import { createUserSession, destroyUserSession } from "~/utils/session.server";
 import { validatePassword, validateUsername } from "~/utils/validation.server";
@@ -50,7 +50,7 @@ export async function login({
     return badRequest({ fieldErrors, fields });
   }
 
-  let user = await getUserByUsername(username);
+  let user; // = await getUserByUsername(username);
   if (!user) {
     return badRequest({
       fields,
@@ -58,7 +58,7 @@ export async function login({
     });
   }
 
-  const isCorrectPassword = await bcrypt.compare(password, user.passwordHash);
+  const isCorrectPassword = undefined; // = await bcrypt.compare(password, user.passwordHash);
   if (!isCorrectPassword) {
     return badRequest({
       fields,
@@ -92,7 +92,7 @@ export async function updatePassword({
     return badRequest({ formError: "Passwörter müssen übereinstimmen" });
   }
 
-  await updateUserById(user.id, { passwordHash: newPasswordHash });
+  // await updateUserById(user.id, { passwordHash: newPasswordHash });
 
   return json({ formSuccess: "Passwort aktualisiert" }, { status: 201 });
 }

@@ -1,22 +1,16 @@
-import type { LinksFunction } from "@remix-run/node";
 import { Link, Outlet } from "@remix-run/react";
-import stylesUrl from "~/styles/layout.css";
-
-export const links: LinksFunction = () => {
-  return [{ rel: "stylesheet", href: stylesUrl }];
-};
 
 export default function Layout() {
   return (
-    <main className="container">
-      <div className="header">
-        <h1 className="heading">
-          <Link to="/" className="home">
-            Randomizer - der Zufallsgenerator 🎲
-          </Link>
-        </h1>
-        <Link to="/manage">Konto 👤</Link>
-      </div>
+    <main className="flex flex-col max-w-3xl mx-auto my-8 bg-white p-8 rounded-3xl">
+      <h1 className="text-purple-700 text-4xl text-center mb-8">
+        <Link
+          to="/"
+          className=" no-underline hover:no-underline focus:no-underline"
+        >
+          Randomizer - der Zufallsgenerator 🎲
+        </Link>
+      </h1>
       <Outlet />
     </main>
   );

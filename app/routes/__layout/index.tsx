@@ -1,45 +1,40 @@
-import type { Randomizer, User } from "@prisma/client";
-import type { LinksFunction, LoaderFunction } from "@remix-run/node";
+import type { Randomizer } from "@prisma/client";
+import type { LoaderFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { Link, useLoaderData } from "@remix-run/react";
-import { requireUser } from "~/auth/validation.server";
 import { getRandomizers } from "~/database/queries.server";
-import stylesUrl from "~/styles/index.css";
 
-type LoaderData = { randomizers: Randomizer[]; user: User };
+type LoaderData = { randomizers: Randomizer[] };
 
-export const links: LinksFunction = () => {
-  return [{ rel: "stylesheet", href: stylesUrl }];
-};
-
-export const loader: LoaderFunction = async ({ request }) => {
-  const user = await requireUser(request);
+export const loader: LoaderFunction = async () => {
   const randomizers = await getRandomizers();
-  return json({ randomizers, user });
+  return json({ randomizers });
 };
 
 export default function Index() {
-  const { randomizers, user } = useLoaderData<LoaderData>();
+  const { randomizers } = useLoaderData<LoaderData>();
   return (
     <>
       <p>Wähle einen Zufallsgenerator:</p>
-      <ul>
+      <ul className="flex flex-col space-y-2 mb-8">
         {randomizers?.map((randomizer) => (
-          <li key={randomizer.id}>
-            <Link to={`randomizer/${randomizer.id}`} className="button">
+          <li key={randomizer.id} className="block">
+            <Link
+              to={`randomizer/${randomizer.id}`}
+              className="block border border-purple-700 text-purple-700 rounded py-4 px-8 hover:bg-purple-100"
+            >
               {randomizer.name}
             </Link>
           </li>
         ))}
       </ul>
-      {user?.role === "ADMIN" && (
-        <>
-          <p>Oder erstelle einen neuen:</p>
-          <Link to="randomizer/new" className="button">
-            erstellen
-          </Link>
-        </>
-      )}
+      <p>Oder erstelle einen neuen:</p>
+      <Link
+        to="randomizer/new"
+        className="block border border-purple-700 text-purple-700 rounded py-4 px-8 hover:bg-purple-100"
+      >
+        erstellen
+      </Link>
     </>
   );
 }

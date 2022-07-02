@@ -1,14 +1,14 @@
-import type { Role } from "@prisma/client";
+// import type { Role } from "@prisma/client";
 import { redirect } from "@remix-run/node";
-import { getUserById } from "~/database/queries.server";
+// import { getUserById } from "~/database/queries.server";
 import { getUserId, requireUserId } from "~/utils/session.server";
 import { logout } from "./authentication.server";
 
-export async function requireUserRole(role: Role, request: Request) {
+export async function requireUserRole(role: any, request: Request) {
   const user = await requireUser(request);
-  if (user?.role !== role) {
-    throw redirect("/");
-  }
+  // if (user?.role !== role) {
+  //   throw redirect("/");
+  // }
 }
 
 export async function requireUser(
@@ -17,7 +17,7 @@ export async function requireUser(
 ) {
   const userId = await requireUserId(request, redirectTo);
   try {
-    const user = await getUserById(userId);
+    const user = undefined; //await getUserById(userId);
     return user;
   } catch {
     throw logout(request);
@@ -31,7 +31,7 @@ export async function getUser(request: Request) {
   }
 
   try {
-    const user = await getUserById(userId);
+    const user = undefined; //await getUserById(userId);
     return user;
   } catch {
     throw logout(request);

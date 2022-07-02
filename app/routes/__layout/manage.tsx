@@ -1,10 +1,6 @@
 import { Role } from "@prisma/client";
-import {
-  ActionFunction,
-  json,
-  LinksFunction,
-  LoaderFunction,
-} from "@remix-run/node";
+import type { ActionFunction, LoaderFunction } from "@remix-run/node";
+import { json } from "@remix-run/node";
 import {
   Form,
   useActionData,
@@ -14,17 +10,12 @@ import {
 import { useEffect, useRef } from "react";
 import { updatePassword } from "~/auth/authentication.server";
 import { requireUser } from "~/auth/validation.server";
-import styleUrl from "~/styles/manage.css";
 import { isString } from "~/utils/guards";
 
 type ActionData = {
   formError?: string;
   formSuccess?: string;
 };
-
-export const links: LinksFunction = () => [
-  { rel: "stylesheet", href: styleUrl },
-];
 
 export const loader: LoaderFunction = async ({ request }) => {
   const user = await requireUser(request);
