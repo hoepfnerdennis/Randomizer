@@ -34,7 +34,7 @@ const badRequest = (data: ActionData) => json(data, { status: 400 });
 export async function loader({ request, params }: DataFunctionArgs) {
   const { id } = params;
   if (!isString(id)) return redirect("/");
-  await requireReadOnlyRandomizerId(id, request);
+  await requireReadOnlyRandomizerId(id, request, `/randomizer/${id}/authorize`);
   const randomizer = await getRandomizer(id);
   if (!randomizer) return redirect("/");
   return json({ randomizer });

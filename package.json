@@ -7,7 +7,8 @@
     "build:css": "tailwindcss -o ./app/tailwind.css",
     "dev": "concurrently \"yarn dev:css\" \"remix dev\"",
     "dev:css": "tailwindcss -o ./app/styles/tailwind.css --watch",
-    "prisma:push": "prisma db push"
+    "prisma:push": "prisma db push",
+    "prisma:seed": "prisma db seed"
   },
   "dependencies": {
     "@prisma/client": "^4.0.0",

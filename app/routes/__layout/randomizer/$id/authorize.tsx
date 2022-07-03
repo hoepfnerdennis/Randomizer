@@ -42,7 +42,7 @@ export const action: ActionFunction = async ({ request, params }) => {
   return createReadOnlyRandomizerSession(id, `/randomizer/${id}`);
 };
 
-export default function Login() {
+export default function Authorize() {
   const { randomizer } = useLoaderData();
   const actionData = useActionData<ActionData>();
   return (

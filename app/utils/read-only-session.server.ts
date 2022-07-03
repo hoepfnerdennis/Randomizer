@@ -37,12 +37,13 @@ function getReadOnlyRandomizerSession(request: Request) {
 
 export async function requireReadOnlyRandomizerId(
   id: string,
-  request: Request
+  request: Request,
+  redirectTo: string
 ) {
   const session = await getReadOnlyRandomizerSession(request);
   const randomizerId = session.get(id);
   if (!isString(randomizerId)) {
-    throw redirect(new URL(request.url).pathname + "/login");
+    throw redirect(redirectTo);
   }
   return randomizerId;
 }
