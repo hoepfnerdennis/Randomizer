@@ -5,7 +5,7 @@ import { Form, useActionData, useLoaderData } from "@remix-run/react";
 import { login } from "~/auth/authentication.server";
 import { getRandomizer } from "~/database/queries.server";
 import { isString } from "~/utils/guards";
-import { createReadOnlyRandomizerSession } from "~/utils/read-only-session.server";
+import { createReadOnlyRandomizerSession } from "~/utils/read-only-cookie.server";
 
 type ActionData = {
   formError?: string;

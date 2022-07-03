@@ -10,7 +10,7 @@ import {
 import type { Randomizer, User, UserRandomizer, Value } from "@prisma/client";
 import { useEffect, useRef } from "react";
 import { isString } from "~/utils/guards";
-import { requireReadOnlyRandomizerId } from "~/utils/read-only-session.server";
+import { requireReadOnlyRandomizerId } from "~/utils/read-only-cookie.server";
 import { notify } from "~/utils/notification.client";
 import { db } from "~/database/db.server";
 import { getUserId } from "~/utils/user-session.server";
@@ -36,22 +36,28 @@ const badRequest = (data: ActionData) => json(data, { status: 400 });
 export async function loader({ request, params }: DataFunctionArgs) {
   const { id } = params;
   if (!isString(id)) return redirect("/");
-  await requireReadOnlyRandomizerId(id, request, `/randomizer/${id}/authorize`);
   const userId = await getUserId(request);
   const randomizer = await db.randomizer.findUnique({
     where: { id },
     select: {
       id: true,
       name: true,
+      password: true,
       values: true,
       managers: true,
-      password: true,
     },
   });
   if (!randomizer) return redirect("/");
   const isManager = Boolean(
     randomizer.managers.find((manager) => manager.userId === userId)
   );
+  if (!isManager)
+    await requireReadOnlyRandomizerId(
+      id,
+      request,
+      `/randomizer/${id}/authorize`
+    );
+
   let users: Pick<User, "id" | "username">[] | undefined = undefined;
   if (isManager) {
     users = await db.user.findMany({ select: { id: true, username: true } });
@@ -111,7 +117,12 @@ export async function action({ request, params }: DataFunctionArgs) {
           errors: { name: "Name needs to be a string value" },
         });
       }
-      await db.randomizer.delete({ where: { id } });
+      await db.userRandomizer.deleteMany({
+        where: { randomizer: { id } },
+      });
+      await db.randomizer.delete({
+        where: { id },
+      });
       return redirect("/");
     case "managers":
       const newManagers = formData.getAll("managers").map(String);
@@ -200,8 +211,6 @@ export default function JokesIndexRoute() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    console.log(">>> randomizer", randomizer);
-
     if (!isAdding) {
       formRef.current?.reset();
       inputRef.current?.focus();
@@ -270,6 +279,12 @@ export default function JokesIndexRoute() {
           <ValueItem key={value.id} value={value} />
         ))}
       </ul>
+      <Form method="post" action="dice">
+        <input type="hidden" name="start" value={Date.now()} />
+        <Button type="submit" name="_action" value="start">
+          Würfel
+        </Button>
+      </Form>
       {isManager && users && (
         <details>
           <summary className="mt-2 cursor-pointer marker:text-purple-700">
@@ -301,10 +316,6 @@ export default function JokesIndexRoute() {
           </Form>
         </details>
       )}
-
-      {/* <button className="button start" onClick={() => console.log("click")}>
-        Start
-      </button> */}
     </>
   );
 }

@@ -11,35 +11,38 @@ datasource db {
 }
 
 model Randomizer {
-  id       String           @id @default(uuid())
-  name     String
-  password String
-  Value    Value[]
-  Managers UserRandomizer[]
+  id            String           @id @default(uuid())
+  name          String
+  password      String
+  values        Value[]          @relation("AllValues")
+  managers      UserRandomizer[]
+  selectedValue Value?           @relation("SelectedValue")
 }
 
 model Value {
-  id           String     @id @default(uuid())
+  id           String      @id @default(uuid())
   name         String
-  randomizer   Randomizer @relation(fields: [randomizerId], references: [id])
+  randomizer   Randomizer  @relation(name: "AllValues", fields: [randomizerId], references: [id], onDelete: Cascade)
   randomizerId String
-  user         User       @relation(fields: [userId], references: [id])
+  user         User        @relation(fields: [userId], references: [id])
   userId       String
+  selected     Randomizer? @relation(name: "SelectedValue", fields: [selectedId], references: [id])
+  selectedId   String?     @unique
 }
 
 model User {
   id           String           @id @default(uuid())
   username     String           @unique
   passwordHash String
-  Values       Value[]
-  Randomizers  UserRandomizer[]
+  values       Value[]
+  randomizers  UserRandomizer[]
 }
 
 model UserRandomizer {
   randomizerId String     @map("randomizer_id")
   userId       String     @map("user_id")
-  randomizer   Randomizer @relation(fields: [randomizerId], references: [id])
-  user         User       @relation(fields: [userId], references: [id])
+  randomizer   Randomizer @relation(fields: [randomizerId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([randomizerId, userId])
   @@map("randomizer_user")

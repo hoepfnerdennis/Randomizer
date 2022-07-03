@@ -2,13 +2,10 @@ import type { ActionFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import bcrypt from "bcryptjs";
 import { Form, useActionData, useSearchParams } from "@remix-run/react";
-import { login } from "~/auth/authentication.server";
 import Button from "~/components/Button";
 import InputField from "~/components/InputField";
-import LoginContainer from "~/components/LoginContainer";
 import { db } from "~/database/db.server";
 import { isString } from "~/utils/guards";
-import { createLogger } from "~/utils/logger.server";
 import { createUserSession } from "~/utils/user-session.server";
 import { validatePassword, validateUsername } from "~/utils/validation.server";
 
@@ -68,7 +65,7 @@ export default function Register() {
   const actionData = useActionData<ActionData>();
   const [searchParams] = useSearchParams();
   return (
-    <LoginContainer error={actionData?.formError}>
+    <>
       <Form method="post" className="flex flex-col space-y-2">
         <input
           type="hidden"
@@ -105,6 +102,11 @@ export default function Register() {
         />
         <Button type="submit">Registrieren</Button>
       </Form>
-    </LoginContainer>
+      {actionData?.formError && (
+        <p className="text-base text-red-500 mt-1" role="alert">
+          {actionData.formError}
+        </p>
+      )}
+    </>
   );
 }

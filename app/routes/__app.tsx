@@ -41,7 +41,7 @@ export default function Layout() {
       <footer className="flex gap-4 justify-center items-center mt-4">
         {user ? (
           <>
-            <Link to="/" className="text-purple-700 hover:underline">
+            <Link to="/manage" className="text-purple-700 hover:underline">
               {user.username}
             </Link>
             <span className="text-xs">-</span>

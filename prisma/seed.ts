@@ -43,59 +43,21 @@ const users = [
   },
 ];
 
-const userRandomizers = [
-  { randomizerId: randomizers[0].id, userId: users[0].id },
-  { randomizerId: randomizers[1].id, userId: users[1].id },
-  { randomizerId: randomizers[2].id, userId: users[0].id },
-];
-
 async function seed() {
+  users.forEach(async (user) => {
+    await db.user.create({ data: user });
+  });
   randomizers.forEach(async (randomizer) => {
-    await db.randomizer.create({ data: randomizer });
-    values(
-      userRandomizers.find((ur) => ur.randomizerId === randomizer.id)?.userId!!,
-      randomizer.id,
-      6
-    ).forEach(async (value) => {
+    await db.randomizer.create({
+      data: {
+        ...randomizer,
+        managers: { create: { user: { connect: { id: "manager" } } } },
+      },
+    });
+    values("manager", randomizer.id, 6).forEach(async (value) => {
       await db.value.create({ data: value });
     });
   });
-
-  users.forEach(async (user) => {
-    await db.user.create({
-      data: {
-        ...user,
-        Randomizers: {
-          create: {
-            randomizer: {
-              connect: {
-                id: userRandomizers.find((ur) => ur.userId === user.id)
-                  ?.randomizerId,
-              },
-            },
-          },
-        },
-      },
-    });
-  });
-
-  // userRandomizers.forEach(async (userRandomizer) => {
-  //   await db.userRandomizer.create({ data: userRandomizer });
-  // });
-
-  // userRandomizers.forEach(async (userRandomizer) => {
-  //   await db.user.update({
-  //     where: { id: userRandomizer.userId },
-  //     data: {
-  //       randomizers: {
-  //         connectOrCreate: {
-  //           create: { randomizerId: userRandomizer.randomizerId },
-  //           where: { randomizerId_userId: userRandomizer },
-  //         },
-  //       },
-  //     },
-  //   });
-  // });
 }
 
 seed();

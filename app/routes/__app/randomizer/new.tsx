@@ -3,7 +3,7 @@ import { Form } from "@remix-run/react";
 import { db } from "~/database/db.server";
 import { createRandomizer } from "~/database/queries.server";
 import { isString } from "~/utils/guards";
-import { createReadOnlyRandomizerSession } from "~/utils/read-only-session.server";
+import { createReadOnlyRandomizerSession } from "~/utils/read-only-cookie.server";
 import { requireUserId } from "~/utils/user-session.server";
 
 function generatePassword(length: number) {

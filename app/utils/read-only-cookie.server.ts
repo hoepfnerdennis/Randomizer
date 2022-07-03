@@ -10,12 +10,11 @@ type ReadOnlyCookie = Record<string, string>;
 
 export const readOnlyCookie = createCookie("read_only_session", {
   maxAge: 2_592_000, // one month
-  expires: new Date(Date.now() + 2_592_000_000),
   secure: process.env.NODE_ENV === "production",
   secrets: [sessionSecret],
 });
 
-async function getReadOnlyRandomizerSession(
+export async function getReadOnlyRandomizerSession(
   request: Request
 ): Promise<ReadOnlyCookie> {
   const cookieHeader = request.headers.get("Cookie");
@@ -32,7 +31,9 @@ export async function createReadOnlyRandomizerSession(
   readOnly[id] = id;
   return redirect(redirectTo, {
     headers: {
-      "Set-Cookie": await readOnlyCookie.serialize(readOnly),
+      "Set-Cookie": await readOnlyCookie.serialize(readOnly, {
+        expires: new Date(Date.now() + 2_592_000_000),
+      }),
     },
   });
 }
