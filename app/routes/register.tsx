@@ -2,22 +2,25 @@ import type { ActionFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import bcrypt from "bcryptjs";
 import { Form, useActionData, useSearchParams } from "@remix-run/react";
+import { login } from "~/auth/authentication.server";
 import Button from "~/components/Button";
 import InputField from "~/components/InputField";
 import LoginContainer from "~/components/LoginContainer";
 import { db } from "~/database/db.server";
 import { isString } from "~/utils/guards";
+import { createLogger } from "~/utils/logger.server";
 import { createUserSession } from "~/utils/user-session.server";
 import { validatePassword, validateUsername } from "~/utils/validation.server";
 
 type ActionData = {
   formError?: string;
   fieldErrors?: {
-    username: string | undefined;
-    password: string | undefined;
+    username?: string;
+    password?: string;
+    confirm_password?: string;
   };
   fields?: {
-    username: string;
+    username?: string;
   };
 };
 
@@ -27,9 +30,23 @@ export const action: ActionFunction = async ({ request }) => {
   const form = await request.formData();
   const username = form.get("username");
   const password = form.get("password");
+  const confirm_password = form.get("confirm_password");
   const redirectTo = form.get("redirectTo") || "/";
-  if (!isString(username) || !isString(password) || !isString(redirectTo))
+  if (
+    !isString(username) ||
+    !isString(password) ||
+    !isString(confirm_password) ||
+    !isString(redirectTo)
+  )
     return badRequest({ formError: "Eingaben nicht akzeptiert" });
+  const usernameAlreadyExists = await db.user.findUnique({
+    where: { username },
+    select: { username: true },
+  });
+  if (usernameAlreadyExists)
+    return badRequest({
+      fieldErrors: { username: "Benutzername bereits vergeben" },
+    });
   const fields = { username };
   const fieldErrors = {
     username: validateUsername(username),
@@ -37,25 +54,17 @@ export const action: ActionFunction = async ({ request }) => {
   };
   if (Object.values(fieldErrors).some(Boolean))
     return badRequest({ fieldErrors, fields });
-  let user = await db.user.findUnique({
-    where: { username },
-    select: { id: true, passwordHash: true },
-  });
-  if (!user)
+
+  if (password !== confirm_password)
     return badRequest({
-      fields,
-      formError: "Benutzername und/oder Passwort nicht korrekt",
+      fieldErrors: { confirm_password: "Passwörter müssen übereinstimmen" },
     });
-  const isCorrectPassword = await bcrypt.compare(password, user.passwordHash);
-  if (!isCorrectPassword)
-    return badRequest({
-      fields,
-      formError: "Benutzername und/oder Passwort nicht korrekt",
-    });
-  return createUserSession(user.id, redirectTo);
+  const passwordHash = await bcrypt.hash(password, 10);
+  const { id } = await db.user.create({ data: { username, passwordHash } });
+  return createUserSession(id, redirectTo);
 };
 
-export default function Login() {
+export default function Register() {
   const actionData = useActionData<ActionData>();
   const [searchParams] = useSearchParams();
   return (
@@ -85,7 +94,16 @@ export default function Login() {
           minLength={5}
           error={actionData?.fieldErrors?.password}
         />
-        <Button type="submit">Anmelden</Button>
+        <InputField
+          type="password"
+          name="confirm_password"
+          label="Passwort wiederholen"
+          placeholder="Passwort wiederholen"
+          required
+          minLength={6}
+          error={actionData?.fieldErrors?.confirm_password}
+        />
+        <Button type="submit">Registrieren</Button>
       </Form>
     </LoginContainer>
   );

@@ -7,7 +7,7 @@ if (!sessionSecret) {
 
 const storage = createCookieSessionStorage({
   cookie: {
-    name: "random_session",
+    name: "user_session",
     secure: process.env.NODE_ENV === "production",
     secrets: [sessionSecret],
     sameSite: "lax",
@@ -51,9 +51,9 @@ export async function requireUserId(
   return userId;
 }
 
-export async function destroyUserSession(request: Request) {
+export async function destroyUserSession(request: Request, redirectTo = "/") {
   const session = await getUserSession(request);
-  return redirect("/login", {
+  return redirect(redirectTo, {
     headers: {
       "Set-Cookie": await storage.destroySession(session),
     },

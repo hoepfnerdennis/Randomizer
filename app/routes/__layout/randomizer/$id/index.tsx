@@ -7,25 +7,27 @@ import {
   useLoaderData,
   useTransition,
 } from "@remix-run/react";
-import type { Randomizer, User, Value } from "@prisma/client";
+import type { Randomizer, User, UserRandomizer, Value } from "@prisma/client";
 import { useEffect, useRef } from "react";
-import {
-  addValueToRandomizer,
-  deleteRandomizer,
-  getRandomizer,
-  removeValueFromRandomizer,
-} from "~/database/queries.server";
 import { isString } from "~/utils/guards";
-import { requireUser } from "~/auth/validation.server";
 import { requireReadOnlyRandomizerId } from "~/utils/read-only-session.server";
 import { notify } from "~/utils/notification.client";
+import { db } from "~/database/db.server";
+import { getUserId } from "~/utils/user-session.server";
+import InputField from "~/components/InputField";
+import Button from "~/components/Button";
 
 type LoaderData = {
-  randomizer: Randomizer & { values: Value[] };
+  randomizer: Randomizer & { values: Value[]; managers: UserRandomizer[] };
+  isManager: boolean;
+  isLoggedIn: boolean;
+  userId: string | null;
+  users?: Pick<User, "id" | "username">[];
 };
 type ActionData = {
   errors?: {
-    name: string | undefined;
+    name?: string;
+    manager?: string;
   };
 };
 
@@ -35,9 +37,27 @@ export async function loader({ request, params }: DataFunctionArgs) {
   const { id } = params;
   if (!isString(id)) return redirect("/");
   await requireReadOnlyRandomizerId(id, request, `/randomizer/${id}/authorize`);
-  const randomizer = await getRandomizer(id);
+  const userId = await getUserId(request);
+  const randomizer = await db.randomizer.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      name: true,
+      values: true,
+      managers: true,
+      password: true,
+    },
+  });
   if (!randomizer) return redirect("/");
-  return json({ randomizer });
+  const isManager = Boolean(
+    randomizer.managers.find((manager) => manager.userId === userId)
+  );
+  let users: Pick<User, "id" | "username">[] | undefined = undefined;
+  if (isManager) {
+    users = await db.user.findMany({ select: { id: true, username: true } });
+  }
+  const isLoggedIn = Boolean(userId);
+  return json({ randomizer, isManager, isLoggedIn, userId, users });
 }
 
 export async function action({ request, params }: DataFunctionArgs) {
@@ -48,39 +68,112 @@ export async function action({ request, params }: DataFunctionArgs) {
   if (!isString(id)) {
     return null;
   }
-
+  const userId = await getUserId(request);
+  let isManager = false;
   switch (_action) {
     case "create":
-      if (!isString(values.name)) {
+      if (!isString(values.name) || !isString(userId)) {
         return badRequest({
           errors: { name: "Name needs to be a string value" },
         });
       }
-      return addValueToRandomizer(id, values.name);
+      return db.value.create({
+        data: { name: values.name, randomizerId: id, userId },
+      });
     case "remove":
-      if (!isString(values.id)) {
+      const removeRandomizer = await db.randomizer.findUnique({
+        where: { id },
+        select: { managers: true },
+      });
+      isManager = Boolean(
+        removeRandomizer?.managers.find((manager) => manager.userId === userId)
+      );
+      if (
+        !isString(values.id) ||
+        !isString(userId) ||
+        (!isManager && values.userId !== userId)
+      ) {
         return badRequest({
           errors: { name: "Name needs to be a string value" },
         });
       }
-      return removeValueFromRandomizer(values.id);
+      return db.value.delete({ where: { id: values.id } });
     case "delete":
-      await deleteRandomizer(id);
+      const deleteRandomizer = await db.randomizer.findUnique({
+        where: { id },
+        select: { managers: true },
+      });
+      isManager = Boolean(
+        deleteRandomizer?.managers.find((manager) => manager.userId === userId)
+      );
+      if (!isString(userId) || !isManager) {
+        return badRequest({
+          errors: { name: "Name needs to be a string value" },
+        });
+      }
+      await db.randomizer.delete({ where: { id } });
       return redirect("/");
+    case "managers":
+      const newManagers = formData.getAll("managers").map(String);
+      if (!isString(userId) || newManagers.includes(userId)) {
+        return badRequest({
+          errors: { manager: "kannsch dich ned selber löschen" },
+        });
+      }
+      const managersRandomizer = await db.randomizer.findUnique({
+        where: { id },
+        select: { managers: true },
+      });
+
+      const managersToRemove = managersRandomizer?.managers
+        .filter(
+          (manager) =>
+            manager.userId !== userId && !newManagers.includes(manager.userId)
+        )
+        .map((mr) => mr.userId);
+
+      const managersToSet = newManagers.filter((newManager) =>
+        managersRandomizer?.managers.find(
+          (manager) => manager.userId !== newManager
+        )
+      );
+
+      if (managersToRemove?.length) {
+        await db.userRandomizer.deleteMany({
+          where: {
+            randomizerId: id,
+            OR: managersToRemove.map((managerToRemove) => ({
+              userId: managerToRemove,
+            })),
+          },
+        });
+      }
+
+      if (managersToSet?.length) {
+        managersToSet.forEach(async (managerToSet) => {
+          await db.userRandomizer.create({
+            data: { randomizerId: id, userId: managerToSet },
+          });
+        });
+      }
+
+      return null;
     default:
       return null;
   }
 }
 
 function ValueItem({ value }: { value: Partial<Value> }) {
+  const { isManager, userId } = useLoaderData<LoaderData>();
   const fetcher = useFetcher();
   const isDeleting = fetcher.submission?.formData.get("id") === value.id;
   return (
     <li hidden={isDeleting}>
       <fetcher.Form method="post" replace className="space-x-2">
         <input type="hidden" name="id" value={value.id} />
+        <input type="hidden" name="userId" value={value.userId} />
         {value.name}
-        {value.id && (
+        {value.id && (isManager || value.userId === userId) && (
           <button
             type="submit"
             name="_action"
@@ -96,7 +189,8 @@ function ValueItem({ value }: { value: Partial<Value> }) {
 }
 
 export default function JokesIndexRoute() {
-  const { randomizer } = useLoaderData<LoaderData>();
+  const { randomizer, isLoggedIn, isManager, users, userId } =
+    useLoaderData<LoaderData>();
   const transition = useTransition();
   const isAdding =
     transition.state === "submitting" &&
@@ -106,6 +200,8 @@ export default function JokesIndexRoute() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    console.log(">>> randomizer", randomizer);
+
     if (!isAdding) {
       formRef.current?.reset();
       inputRef.current?.focus();
@@ -116,7 +212,7 @@ export default function JokesIndexRoute() {
     <>
       <div className="flex w-full justify-between mb-4">
         <h2 className="text-2xl">{randomizer.name}</h2>
-        <div className="flex items-end space-x-2">
+        <div className="flex items-stretch space-x-2 my-2">
           <input
             type="text"
             value={randomizer.password}
@@ -128,45 +224,83 @@ export default function JokesIndexRoute() {
               notify("Passwort kopiert!");
             }}
           />
-          <Form method="delete">
-            <button
-              type="submit"
-              name="_action"
-              value="delete"
-              className="bg-red-600 px-4 py-1 rounded text-white hover:bg-red-900 text-xs"
-              title="Randomizer löschen"
-            >
-              Löschen
-            </button>
-          </Form>
+          {isManager && (
+            <Form method="delete" className="flex">
+              <button
+                type="submit"
+                name="_action"
+                value="delete"
+                className="bg-red-600 px-4 py-1 rounded text-white hover:bg-red-900 text-xs"
+                title="Randomizer löschen"
+              >
+                Löschen
+              </button>
+            </Form>
+          )}
         </div>
       </div>
-      <Form method="post" replace ref={formRef} className="flex space-x-2 mb-4">
-        <input
-          type="text"
-          name="name"
-          ref={inputRef}
-          required
-          minLength={1}
-          maxLength={30}
-          placeholder="Neue Option"
-          className="p-2 border border-solid border-purple-700 rounded"
-        />
-        <button
-          type="submit"
-          name="_action"
-          value="create"
-          disabled={isAdding}
-          className="px-8 py-2 bg-purple-700 text-white hover:bg-purple-900 rounded"
+      {isLoggedIn && (
+        <Form
+          method="post"
+          replace
+          ref={formRef}
+          className="flex space-x-2 mb-4"
         >
-          Hinzufügen
-        </button>
-      </Form>
+          <InputField
+            type="text"
+            name="name"
+            ref={inputRef}
+            required
+            minLength={1}
+            maxLength={30}
+            placeholder="Neue Option"
+          />
+          <Button
+            type="submit"
+            name="_action"
+            value="create"
+            disabled={isAdding}
+          >
+            Hinzufügen
+          </Button>
+        </Form>
+      )}
       <ul className="space-y-2 mb-4 flex flex-col items-start">
         {randomizer?.values?.map((value) => (
           <ValueItem key={value.id} value={value} />
         ))}
       </ul>
+      {isManager && users && (
+        <details>
+          <summary className="mt-2 cursor-pointer marker:text-purple-700">
+            Randomizer-Manager
+          </summary>
+          <Form method="post">
+            <fieldset className="flex flex-col gap-2">
+              {users.map((user) => (
+                <label key={user.id} className="flex gap-2 items-center">
+                  <input
+                    type="checkbox"
+                    name="managers"
+                    value={user.username}
+                    disabled={user.id === userId}
+                    defaultChecked={Boolean(
+                      randomizer.managers.find(
+                        (manager) => manager.userId === user.id
+                      )
+                    )}
+                    className="disabled:text-gray-500"
+                  />
+                  {user.username}
+                </label>
+              ))}
+            </fieldset>
+            <Button type="submit" name="_action" value="managers">
+              submit
+            </Button>
+          </Form>
+        </details>
+      )}
 
       {/* <button className="button start" onClick={() => console.log("click")}>
         Start

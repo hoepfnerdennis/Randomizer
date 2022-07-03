@@ -1,4 +1,4 @@
-import { createCookieSessionStorage, redirect } from "@remix-run/node";
+import { redirect, createCookie } from "@remix-run/node";
 import { isString } from "./guards";
 
 const sessionSecret = process.env.SESSION_SECRET;
@@ -6,33 +6,35 @@ if (!sessionSecret) {
   throw new Error("SESSION_SECRET must be set");
 }
 
-const storage = createCookieSessionStorage({
-  cookie: {
-    name: "read_only_session",
-    secure: process.env.NODE_ENV === "production",
-    secrets: [sessionSecret],
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 30,
-    httpOnly: true,
-  },
+type ReadOnlyCookie = Record<string, string>;
+
+export const readOnlyCookie = createCookie("read_only_session", {
+  maxAge: 2_592_000, // one month
+  expires: new Date(Date.now() + 2_592_000_000),
+  secure: process.env.NODE_ENV === "production",
+  secrets: [sessionSecret],
 });
 
+async function getReadOnlyRandomizerSession(
+  request: Request
+): Promise<ReadOnlyCookie> {
+  const cookieHeader = request.headers.get("Cookie");
+  return (await readOnlyCookie.parse(cookieHeader)) || {};
+}
+
 export async function createReadOnlyRandomizerSession(
+  request: Request,
   id: string,
   redirectTo: string
 ) {
-  const session = await storage.getSession();
-  session.set(id, id);
+  console.log(">>> createReadOnlyRandomizerSession", id);
+  const readOnly = await getReadOnlyRandomizerSession(request);
+  readOnly[id] = id;
   return redirect(redirectTo, {
     headers: {
-      "Set-Cookie": await storage.commitSession(session),
+      "Set-Cookie": await readOnlyCookie.serialize(readOnly),
     },
   });
-}
-
-function getReadOnlyRandomizerSession(request: Request) {
-  return storage.getSession(request.headers.get("Cookie"));
 }
 
 export async function requireReadOnlyRandomizerId(
@@ -40,8 +42,10 @@ export async function requireReadOnlyRandomizerId(
   request: Request,
   redirectTo: string
 ) {
-  const session = await getReadOnlyRandomizerSession(request);
-  const randomizerId = session.get(id);
+  const readOnly = await getReadOnlyRandomizerSession(request);
+  const randomizerId = readOnly[id];
+  console.log(">>> requireReadOnlyRandomizerId", id, randomizerId);
+
   if (!isString(randomizerId)) {
     throw redirect(redirectTo);
   }

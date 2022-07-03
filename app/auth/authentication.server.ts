@@ -1,9 +1,14 @@
 import { User } from "@prisma/client";
 import { json } from "@remix-run/node";
 import bcrypt from "bcryptjs";
+import { db } from "~/database/db.server";
 // import { getUserByUsername } from "~/database/queries.server";
 import { isString } from "~/utils/guards";
-import { createUserSession, destroyUserSession } from "~/utils/session.server";
+import { createLogger } from "~/utils/logger.server";
+import {
+  createUserSession,
+  destroyUserSession,
+} from "~/utils/user-session.server";
 import { validatePassword, validateUsername } from "~/utils/validation.server";
 
 type LoginCredentials = {

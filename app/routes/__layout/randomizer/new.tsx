@@ -1,8 +1,10 @@
-import type { ActionFunction } from "@remix-run/node";
+import { ActionFunction, json, LoaderFunction } from "@remix-run/node";
 import { Form } from "@remix-run/react";
+import { db } from "~/database/db.server";
 import { createRandomizer } from "~/database/queries.server";
 import { isString } from "~/utils/guards";
 import { createReadOnlyRandomizerSession } from "~/utils/read-only-session.server";
+import { requireUserId } from "~/utils/user-session.server";
 
 function generatePassword(length: number) {
   const CHARS =
@@ -13,13 +15,27 @@ function generatePassword(length: number) {
     .join("");
 }
 
+export const loader: LoaderFunction = async ({ request }) => {
+  return requireUserId(request);
+};
+
 export const action: ActionFunction = async ({ request }) => {
+  const userId = await requireUserId(request);
   const formData = await request.formData();
   const name = formData.get("name");
   if (!isString(name)) return null;
   const password = generatePassword(8);
-  const randomizer = await createRandomizer(name, password);
+  const randomizer = await db.randomizer.create({
+    data: {
+      name,
+      password,
+      managers: {
+        create: { userId },
+      },
+    },
+  });
   return createReadOnlyRandomizerSession(
+    request,
     randomizer.id,
     `/randomizer/${randomizer.id}`
   );

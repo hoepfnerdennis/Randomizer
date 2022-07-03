@@ -39,7 +39,7 @@ export const action: ActionFunction = async ({ request, params }) => {
   const randomizer = await getRandomizer(id);
   if (randomizer?.password !== password)
     return badRequest({ formError: "Eingaben nicht akzeptiert" });
-  return createReadOnlyRandomizerSession(id, `/randomizer/${id}`);
+  return createReadOnlyRandomizerSession(request, id, `/randomizer/${id}`);
 };
 
 export default function Authorize() {

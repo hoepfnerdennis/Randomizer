@@ -7,7 +7,7 @@ export function validateUsername(username: unknown) {
 }
 
 export function validatePassword(password: unknown) {
-  if (!isString(password) || password.length < 6) {
-    return "muss mindestens 6 Zeichen lang sein";
+  if (!isString(password) || password.length < 5) {
+    return "muss mindestens 5 Zeichen lang sein";
   }
 }

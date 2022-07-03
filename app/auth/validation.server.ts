@@ -1,7 +1,7 @@
 // import type { Role } from "@prisma/client";
 import { redirect } from "@remix-run/node";
 // import { getUserById } from "~/database/queries.server";
-import { getUserId, requireUserId } from "~/utils/session.server";
+import { getUserId, requireUserId } from "~/utils/user-session.server";
 import { logout } from "./authentication.server";
 
 export async function requireUserRole(role: any, request: Request) {
