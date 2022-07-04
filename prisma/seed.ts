@@ -1,62 +1,44 @@
-import type { Value } from "@prisma/client";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 const db = new PrismaClient();
 
-function values(userId: string, randomizerId: string, length: number): Value[] {
-  return new Array(length).fill("").map((_, i) => ({
-    id: `${randomizerId}-v${i + 1}`,
-    name: `Value ${i + 1}`,
-    randomizerId,
-    userId,
-  }));
-}
-
-const randomizers = [
-  {
-    id: "r1",
-    name: "Randomizer 1",
-    password: "123456",
-  },
-  {
-    id: "r2",
-    name: "Randomizer 2",
-    password: "123456",
-  },
-  {
-    id: "r3",
-    name: "Randomizer 3",
-    password: "123456",
-  },
-];
-
-const users = [
-  {
-    id: "manager",
-    username: "manager",
-    passwordHash: bcrypt.hashSync("123456"),
-  },
-  {
-    id: "admin",
-    username: "admin",
-    passwordHash: bcrypt.hashSync("123456"),
-  },
-];
-
 async function seed() {
-  users.forEach(async (user) => {
-    await db.user.create({ data: user });
+  const admin = await db.user.create({
+    data: { username: "admin", passwordHash: bcrypt.hashSync("12345") },
   });
-  randomizers.forEach(async (randomizer) => {
-    await db.randomizer.create({
-      data: {
-        ...randomizer,
-        managers: { create: { user: { connect: { id: "manager" } } } },
+
+  const randomizer = await db.randomizer.create({
+    data: {
+      name: "Was soll ich heute essen?",
+      password: "12345",
+    },
+  });
+
+  await db.randomizer.update({
+    where: { id: randomizer.id },
+    data: {
+      managers: {
+        connectOrCreate: {
+          create: { userId: admin.id },
+          where: {
+            randomizerId_userId: {
+              randomizerId: randomizer.id,
+              userId: admin.id,
+            },
+          },
+        },
       },
-    });
-    values("manager", randomizer.id, 6).forEach(async (value) => {
-      await db.value.create({ data: value });
-    });
+    },
+  });
+
+  await db.value.create({
+    data: { name: "Pizza", randomizerId: randomizer.id, userId: admin.id },
+  });
+  await db.value.create({
+    data: { name: "Pasta", randomizerId: randomizer.id, userId: admin.id },
+  });
+  await db.value.create({
+    data: { name: "Pommes", randomizerId: randomizer.id, userId: admin.id },
   });
 }
 

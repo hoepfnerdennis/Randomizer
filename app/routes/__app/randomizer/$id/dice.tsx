@@ -1,11 +1,22 @@
-import type { ActionFunction, DataFunctionArgs } from "@remix-run/node";
+import type {
+  ActionFunction,
+  DataFunctionArgs,
+  LinksFunction,
+} from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { Form, useActionData, useLoaderData } from "@remix-run/react";
+import { Form, Link, useActionData, useLoaderData } from "@remix-run/react";
 import Button from "~/components/Button";
 import { db } from "~/database/db.server";
 import { isString } from "~/utils/guards";
 import { requireReadOnlyRandomizerId } from "~/utils/read-only-cookie.server";
 import { getUserId } from "~/utils/user-session.server";
+import styleUrl from "~/styles/dice.css";
+import { useEffect } from "react";
+import Dices from "~/components/Dices";
+
+export const links: LinksFunction = () => [
+  { rel: "stylesheet", href: styleUrl },
+];
 
 export async function loader({ request, params }: DataFunctionArgs) {
   const { id } = params;
@@ -98,10 +109,32 @@ export default function Dice() {
 
   return (
     <div className="space-y-4">
+      <Link
+        className="text-purple-700 hover:underline"
+        to={`/randomizer/${randomizer.id}`}
+      >
+        {"< Zurück"}
+      </Link>
       <h2 className="text-2xl">{randomizer.name}</h2>
-      <div>{selectedValue?.name || "🎲"}</div>
+      {selectedValue?.name ? (
+        <div className="h-56 flex flex-col items-center justify-center">
+          <h3 className="text-8xl text-center text-purple-700">
+            {selectedValue?.name}
+          </h3>
+        </div>
+      ) : !selectedValue && actionData?.start ? (
+        <div className="h-56">
+          <Dices />
+        </div>
+      ) : (
+        <div className="h-56 flex flex-col items-center justify-center">
+          {isManager
+            ? "Wirf die Würfel und lass das Schicksal entscheiden..."
+            : "Frage die Wahrsagerin deines Vertrauens, ob sie dir dein Schicksal vorhersagen kann"}
+        </div>
+      )}
       {isManager && (
-        <Form method="post" replace>
+        <Form method="post" replace className="flex flex-col items-stretch">
           <input
             type="hidden"
             name="start"
@@ -115,10 +148,10 @@ export default function Dice() {
             }
           >
             {selectedValue
-              ? "Zurücksetzen"
+              ? "Karten neu mischen"
               : actionData?.start
-              ? "Aufdecken"
-              : "Starten"}
+              ? "Anhalten"
+              : "Würfel werfen"}
           </Button>
         </Form>
       )}

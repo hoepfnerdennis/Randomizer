@@ -18,7 +18,11 @@ import InputField from "~/components/InputField";
 import Button from "~/components/Button";
 
 type LoaderData = {
-  randomizer: Randomizer & { values: Value[]; managers: UserRandomizer[] };
+  randomizer: Randomizer & {
+    values: Value[];
+    managers: UserRandomizer[];
+    selectedValue?: Value;
+  };
   isManager: boolean;
   isLoggedIn: boolean;
   userId: string | null;
@@ -45,6 +49,7 @@ export async function loader({ request, params }: DataFunctionArgs) {
       password: true,
       values: true,
       managers: true,
+      selectedValue: true,
     },
   });
   if (!randomizer) return redirect("/");
@@ -222,17 +227,22 @@ export default function JokesIndexRoute() {
       <div className="flex w-full justify-between mb-4">
         <h2 className="text-2xl">{randomizer.name}</h2>
         <div className="flex items-stretch space-x-2 my-2">
-          <input
-            type="text"
-            value={randomizer.password}
-            className="px-2 py-0 border border-solid border-purple-700 rounded text-xs"
-            readOnly
-            onClick={(e) => {
-              e.currentTarget.select();
-              navigator.clipboard.writeText(randomizer.password);
-              notify("Passwort kopiert!");
-            }}
-          />
+          <div className="flex items-center">
+            <label className="text-xs">
+              Passwort zum Teilen:
+              <input
+                type="text"
+                value={randomizer.password}
+                className="ml-1 px-2 py-0 border border-solid border-purple-700 rounded text-xs w-20"
+                readOnly
+                onClick={(e) => {
+                  e.currentTarget.select();
+                  navigator.clipboard.writeText(randomizer.password);
+                  notify("Passwort kopiert!");
+                }}
+              />
+            </label>
+          </div>
           {isManager && (
             <Form method="delete" className="flex">
               <button
@@ -282,17 +292,19 @@ export default function JokesIndexRoute() {
       <Form method="post" action="dice">
         <input type="hidden" name="start" value={Date.now()} />
         <Button type="submit" name="_action" value="start">
-          Würfel
+          {randomizer?.selectedValue
+            ? "Die Würfel sind gefallen"
+            : "Lege die Karten"}
         </Button>
       </Form>
-      {isManager && users && (
+      {false && isManager && users && (
         <details>
           <summary className="mt-2 cursor-pointer marker:text-purple-700">
             Randomizer-Manager
           </summary>
           <Form method="post">
             <fieldset className="flex flex-col gap-2">
-              {users.map((user) => (
+              {users?.map((user) => (
                 <label key={user.id} className="flex gap-2 items-center">
                   <input
                     type="checkbox"
