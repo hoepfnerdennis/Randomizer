@@ -4,8 +4,8 @@ import bcrypt from "bcryptjs";
 import { Form, useActionData, useSearchParams } from "@remix-run/react";
 import Button from "~/components/Button";
 import InputField from "~/components/InputField";
-import { db } from "~/database/db.server";
 import { isString } from "~/utils/guards";
+import { db } from "~/database/db.server";
 import { createUserSession } from "~/utils/user-session.server";
 import { validatePassword, validateUsername } from "~/utils/validation.server";
 
